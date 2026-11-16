@@ -244,11 +244,19 @@ function quantity(v) {
 function importWorkout(w, c) {
   const start = parseDate(w.start || w.startDate || w.Start);
   const end = parseDate(w.end || w.endDate || w.End);
-  let minutes = num(w.duration ?? w.Duration);
-  if (!Number.isNaN(minutes)) {
-    // HAE JSON gives seconds; CSV durations may be "0:45:12" (handled by caller) or minutes.
-    if (minutes > 600) minutes /= 60;
-  } else if (!Number.isNaN(start) && !Number.isNaN(end)) minutes = (end - start) / 60000;
+  // Start and end are the most reliable source. Otherwise HAE JSON gives the
+  // duration in seconds (and says so in v2), other sources in minutes.
+  let minutes = NaN;
+  if (!Number.isNaN(start) && !Number.isNaN(end) && end > start) minutes = (end - start) / 60000;
+  else {
+    const d = quantity(w.duration ?? w.Duration);
+    minutes = d.qty;
+    if (!Number.isNaN(minutes)) {
+      const u = norm(d.units);
+      if (u.startsWith('s') || w.durationSeconds || (!u && minutes > 600)) minutes /= 60;
+      else if (u.startsWith('h')) minutes *= 60;
+    }
+  }
   const energy = quantity(w.activeEnergyBurned ?? w.activeEnergy ?? w.energy);
   const dist = quantity(w.distance);
   const extra = { name: String(w.name || w.type || w.workoutType || 'Workout').slice(0, 60) };
@@ -321,7 +329,6 @@ function importCSV(text, c) {
       if (durCol >= 0) w.duration = hms(r[durCol]);
       if (enCol >= 0) w.activeEnergy = { qty: num(r[enCol]), units: /kj/i.test(header[enCol]) ? 'kJ' : 'kcal' };
       if (distCol >= 0) w.distance = { qty: num(r[distCol]), units: (header[distCol].match(/\(([^)]+)\)/) || [])[1] || '' };
-      if (w.duration > 600) w.duration = w.duration / 60; // seconds column
       importWorkout(w, c);
     }
     return;
@@ -341,7 +348,7 @@ function importCSV(text, c) {
       cols.push({ i, kind: 'sleep', stage });
       return;
     }
-    if (n.includes('heartrate') && !n.includes('resting') && !n.includes('variability') && !n.includes('walking')) {
+    if (n.includes('heartrate') && !n.includes('resting') && !n.includes('variability') && !n.includes('walking') && !n.includes('recovery')) {
       const lower = h.toLowerCase();
       if (/\[\s*min\s*\]/.test(lower)) return cols.push({ i, kind: 'hr', part: 'min' });
       if (/\[\s*max\s*\]/.test(lower)) return cols.push({ i, kind: 'hr', part: 'max' });
