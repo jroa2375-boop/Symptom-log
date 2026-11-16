@@ -1,7 +1,7 @@
 // Service worker: keeps the app working offline.
 // Bump VERSION whenever you change any file so phones pick up the update.
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = 'runtime-v1';
 
@@ -32,8 +32,17 @@ const FILES = [
 // Third-party files (Chart.js, the font) are cached the first time they load.
 const CDN_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];
 
+// Fetched at install too, so charts work offline from the very first launch.
+const CDN_FILES = ['https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js'];
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(SHELL).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    Promise.all([
+      caches.open(SHELL).then((c) => c.addAll(FILES)),
+      // Best effort: a CDN hiccup must not stop the app from installing.
+      caches.open(RUNTIME).then((c) => c.addAll(CDN_FILES)).catch(() => {}),
+    ]).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {

@@ -118,21 +118,24 @@ export function analyze(data, from, to) {
     });
   }
 
-  // Workouts in the 2 days before vs not, as proportions.
+  // Workouts in the 1 and 2 days before vs not, as proportions.
   let workoutCompare = null;
+  const workoutCompares = [];
   if (data.metrics.workout && data.metrics.workout.length) {
-    const had = (k) => {
-      const start = addDays(fromDayKey(k), -2);
-      return workoutsBetween(data.metrics.workout, start, fromDayKey(k)).length > 0;
-    };
     const s = [...episodeDays].filter((k) => days.includes(k));
     const f = days.filter((k) => !episodeDays.has(k));
-    workoutCompare = {
-      symptomYes: s.filter(had).length,
-      nS: s.length,
-      freeYes: f.filter(had).length,
-      nF: f.length,
-    };
+    for (const nDays of [1, 2]) {
+      const had = (k) => workoutsBetween(data.metrics.workout, addDays(fromDayKey(k), -nDays), fromDayKey(k)).length > 0;
+      workoutCompares.push({
+        days: nDays,
+        label: nDays === 1 ? 'Workout in the day before' : 'Workout in the 2 days before',
+        symptomYes: s.filter(had).length,
+        nS: s.length,
+        freeYes: f.filter(had).length,
+        nF: f.length,
+      });
+    }
+    workoutCompare = workoutCompares[1];
   }
 
   /* ---- breakdowns ---- */
@@ -271,7 +274,7 @@ export function analyze(data, from, to) {
     wk = new Date(end);
   }
 
-  return { episodes, contexts, comparisons, workoutCompare, byTime, byWeekday, byActivity, byModifier, byType, byRadiates, byLocation, stats, summaries, perWeek };
+  return { episodes, contexts, comparisons, workoutCompare, workoutCompares, byTime, byWeekday, byActivity, byModifier, byType, byRadiates, byLocation, stats, summaries, perWeek };
 }
 
 /** Weekly averages of a daily map, for report trend tables. */

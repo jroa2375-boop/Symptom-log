@@ -100,11 +100,11 @@ export async function render(root, { params }) {
                 <td>${fmtMetric(c.type, c.symptom, s)}<span class="n" style="display:block">${c.nS} days</span></td>
                 <td>${fmtMetric(c.type, c.free, s)}<span class="n" style="display:block">${c.nF} days</span></td>
               </tr>`)}
-              ${raw(a.workoutCompare ? html`<tr>
-                <td>Workout in the 2 days before</td>
-                <td>${a.workoutCompare.nS ? `${Math.round((a.workoutCompare.symptomYes / a.workoutCompare.nS) * 100)}%` : '–'}<span class="n" style="display:block">${a.workoutCompare.symptomYes} of ${a.workoutCompare.nS}</span></td>
-                <td>${a.workoutCompare.nF ? `${Math.round((a.workoutCompare.freeYes / a.workoutCompare.nF) * 100)}%` : '–'}<span class="n" style="display:block">${a.workoutCompare.freeYes} of ${a.workoutCompare.nF}</span></td>
-              </tr>` : '')}
+              ${a.workoutCompares.map((w) => html`<tr>
+                <td>${w.label}</td>
+                <td>${w.nS ? `${Math.round((w.symptomYes / w.nS) * 100)}%` : '–'}<span class="n" style="display:block">${w.symptomYes} of ${w.nS}</span></td>
+                <td>${w.nF ? `${Math.round((w.freeYes / w.nF) * 100)}%` : '–'}<span class="n" style="display:block">${w.freeYes} of ${w.nF}</span></td>
+              </tr>`)}
             </tbody>
           </table>
           <p class="hint" style="margin-top:10px">A dot marks a difference of at least half a standard deviation with 3 or more days on each side.</p>
@@ -146,7 +146,6 @@ function drawTimeline(main) {
   const { data, a, from, to } = ctx;
   const p = palette();
   const canvas = $('#timeline', main);
-  if (!canvas) return;
   const episodes = a.episodes.map((e) => ({ ts: e.start, intensity: e.intensity }));
   let lines;
   let yFormat;
@@ -173,7 +172,7 @@ function drawTimeline(main) {
   legend.innerHTML = html`${lines.map((l, i) => html`<span><i class="line" style="background:${l.color || [p.teal, p.slate][i]}"></i>${l.label}</span>`)}
     <span><i style="background:${p.pain}"></i>Episode (bigger = worse)</span>
     ${raw(has ? '' : '<span>No readings for this metric in this range</span>')}`;
-  lineChart(canvas, { lines, episodes, from, to, yFormat });
+  if (canvas) lineChart(canvas, { lines, episodes, from, to, yFormat });
 }
 
 export function mounted(main) {
@@ -187,7 +186,7 @@ export function mounted(main) {
       state.metric = b.dataset.metric;
       $$('[data-metric]', main).forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
       const canvas = $('#timeline', main);
-      destroyCharts(canvas.parentElement);
+      if (canvas) destroyCharts(canvas.parentElement);
       drawTimeline(main);
     })
   );
