@@ -1,0 +1,18 @@
+# Never commit health data. This repo is public.
+*.json
+!manifest.json
+*.csv
+*.txt
+*.xml
+*.zip
+*backup*
+export/
+exports/
+apple_health_export/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+node_modules/
